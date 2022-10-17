@@ -1,0 +1,296 @@
+openapi: 3.0.0
+info:
+  title: Oculyze Authentication API
+  description: Summarizes all available endpoints for user authentification, password reset and more infos on user scopes
+  version: 0.0.0
+servers:
+  - url: https://stagingsrv.oculyze.de/services/auth/o_auth/v1
+  - url: https://srv.oculyze.de/services/auth/o_auth/v1
+tags:
+  - name: auth
+    description: Everything about Oculyze authentication
+paths:
+  /token:
+    post:
+      tags:
+      - auth
+      summary: Obtain access & refresh tokens; refresh authentification
+      parameters:
+        - in: query
+          name: client_id
+          required: true
+          description: <client_id>
+          schema:
+            type: string
+        - in: query
+          name: client_secret
+          required: true
+          description: <client_secret>
+          schema:
+            type: string
+        - in: query
+          name: grant_type
+          required: false
+          description: <grant_type> - 'password' for access_token, 'refresh_token' to refresh token
+          schema:
+            type: string
+        - in: query
+          name: username
+          required: false
+          description: email - needed to get access_token
+          schema:
+            type: string
+        - in: query
+          name: password
+          required: false
+          description: password - needed to get access_token
+          schema:
+            type: string
+        - in: query
+          name: code
+          required: false
+          description: <authorization_code>
+          schema:
+            type: string
+        - in: query
+          name: refresh_token
+          required: false
+          description: refresh_token - needed to refresh token
+          schema:
+            type: string
+        - in: query
+          name: scope
+          required: false
+          description: limit the scope of the tokens for example to 'batches.read'
+          schema:
+            type: string
+      responses:
+        '200':    # status code
+          description: A JSON array of containing access token, refresh token and additional infos 
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '401':
+          description: '"error" "invalid_grant", "error_description": "Invalid credentials given."'
+  /tokeninfo:
+    get:
+      tags:
+      - auth
+      summary: Obtain more infos about the access token
+      parameters:
+        - in: query
+          name: access_token
+          required: true
+          description: Get more infos on the specified access_token
+          schema:
+            type: string
+      responses:
+        '200':    # status code
+          description: A JSON array of infos for the provided token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tokeninfo'
+        '404':
+          description: Token not found in DB
+  /user:
+    get:
+      tags:
+      - auth
+      summary: Obtain info on the logged in user or other users(name,roles,licensing contract)
+      description: When used without parameter user_id it gives infos on the logged in user. user.read scope is required. Parameter user_id allows to get infos on other users. For this you need to be group admin of one of the user groups.
+      security: 
+        - oculyze_bearer: []
+      parameters:
+        - in: query
+          name: user_id
+          required: false
+          description: Get more infos on the specified user
+          schema:
+            type: string
+      responses:
+        '200':    # status code
+          description: A JSON array of all available infos to the user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Userinfo'
+        '401':
+          description: Unauthorized - (1) without user_id - The server could not verify that you are authorized to access the URL requested.  You either supplied the wrong credentials (e.g. a bad password), or your browser doesn't understand how to supply the credentials required; (2) with user_id - You are not a admin of the requested user
+  /user/pass-reset:
+    get:
+      tags:
+      - auth
+      summary: Requesting a passwort reset to provided email
+      parameters:
+        - in: query
+          name: email
+          required: true
+          description: email the passwort reset email is sent to
+          schema:
+            type: string
+      responses:
+        '200':    # status code
+          description: Email sent to <email>
+        '404':
+          description: Not found - The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again.
+    post:
+      tags:
+      - auth
+      summary: Requesting a passwort reset to provided email
+      parameters:
+        - in: query
+          name: email
+          required: true
+          description: email the passwort reset email is sent to
+          schema:
+            type: string
+      responses:
+        '200':    # status code
+          description: Email sent to <email>
+        '404':
+          description: Not found - The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again.
+  /user/pass:
+    post:
+      tags:
+      - auth
+      summary: For users to set a new password based on a password reset hash
+      description: Generates website that can be used to reset the passwort. Request Url has to be opened in browser.
+      security: 
+        - oculyze_bearer: []
+      parameters:
+        - in: query
+          name: h_id
+          required: true
+          description: reset hash needed to reset the password
+          schema:
+            type: string
+      responses:
+        '200':    # status code
+          description: website with password reset
+        '401':
+          description: Not found
+          
+  /groups:
+    get:
+      tags:
+      - auth
+      security: 
+      - oculyze_bearer: []
+      summary: To get infos about one of the groups you are member or admin of.
+      description: Gives infos about the groups you are member or admin of when used without group paremeter. With group parameter it provides an overview over members and admins of this group. User has to be member or admin of the requested group. Requires user.read scope.
+      parameters:
+        - in: query
+          name: group
+          required: false
+          description: groupname you want to get more infos about
+          schema:
+            type: string
+      responses:
+        '200':    # status code
+          description: Group infos
+        '401':
+          description: The server could not verify that you are authorized to access the URL requested.  You either supplied the wrong credentials (e.g. a bad password), or your browser doesn't understand how to supply the credentials required
+        '404':
+          description: Not found - The requested URL was not found on the server.  If you entered the URL manually please check your spelling and try again.
+
+components:
+  securitySchemes:
+    oculyze_oauth:
+      type: oauth2
+      flows:
+        password:
+          tokenUrl: https://srv.oculyze.de/services/auth/o_auth/token
+          refreshUrl: https://srv.oculyze.de/services/auth/o_auth/token
+          scopes: {}
+    oculyze_bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT    # optional, arbitrary value for documentation purposes
+  schemas:
+    Token:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: atX9SealmyUB2pejyfVas2kxGwaLOE
+        expires_in:
+          type: integer
+          format: int64
+          example: 3600
+        token_type:
+          type: string
+          example: Bearer
+        refresh_token:
+          type: string
+          example: QsAhWPnt83HnzWoKLgTPpd6oYy1xHD
+        scopes:
+          type: string
+          example: jobs.read jobs.write user.read user.write batches.read batches.write tasks.read tasks.write
+        user_id:
+          type: integer
+          format: int64
+          example: 56bdbe17231388031fc1e382
+    Tokeninfo:
+      type: object
+      properties:
+        expires:
+          type: integer
+          format: int64
+          example: 3600
+        scopes:
+          type: string
+          example: [jobs.read, jobs.write, user.read, user.write, batches.read, batches.write, tasks.read, tasks.write]
+        user_id:
+          type: integer
+          format: int64
+          example: 56bdbe17231388031fc1e382
+    Userinfo:
+      type: object
+      properties:
+        email:
+          type: string
+          example: test@hallo.zz
+        first_name:
+          type: string
+          example: norris
+        id:
+          type: string
+          example: 56bdbe17231332031fc1e382
+        last_name:
+          type: string
+          example: chuck
+        roles:
+          type: string
+          description: access scopes of the user
+          example: [yeast_user, internal]  
+        license:
+          $ref: '#/components/schemas/License'
+
+    License:
+      type: object
+      properties:
+        coins_left:
+          type: integer
+          example: 1000
+        expires_at:
+          type: string
+          example: Tue, 23 Feb 2021 11:43:00 GMT
+        is_active:
+          type: boolean
+          example: false
+        started_at:
+          type: string
+          example: Tue, 22 Jan 2019 13:38:17 GMT
+        status:
+          type: integer
+          example: 0
+        type:
+          type: integer
+          example: 1
+    
+          
+security:
+  - oculyze_oauth: []
+  - oculyze_bearer: []
