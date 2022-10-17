@@ -101,7 +101,7 @@ paths:
       summary: Obtain info on the logged in user or other users(name,roles,licensing contract)
       description: When used without parameter user_id it gives infos on the logged in user. user.read scope is required. Parameter user_id allows to get infos on other users. For this you need to be group admin of one of the user groups.
       security: 
-        - oculyze_bearer: []
+        - oculyze_basic: []
       parameters:
         - in: query
           name: user_id
@@ -158,7 +158,7 @@ paths:
       summary: For users to set a new password based on a password reset hash
       description: Generates website that can be used to reset the passwort. Request Url has to be opened in browser.
       security: 
-        - oculyze_bearer: []
+        - oculyze_basic: []
       parameters:
         - in: query
           name: h_id
@@ -177,7 +177,7 @@ paths:
       tags:
       - auth
       security: 
-      - oculyze_bearer: []
+      - oculyze_basic: []
       summary: To get infos about one of the groups you are member or admin of.
       description: Gives infos about the groups you are member or admin of when used without group paremeter. With group parameter it provides an overview over members and admins of this group. User has to be member or admin of the requested group. Requires user.read scope.
       parameters:
@@ -197,17 +197,9 @@ paths:
 
 components:
   securitySchemes:
-    oculyze_oauth:
-      type: oauth2
-      flows:
-        password:
-          tokenUrl: https://srv.oculyze.de/services/auth/o_auth/token
-          refreshUrl: https://srv.oculyze.de/services/auth/o_auth/token
-          scopes: {}
-    oculyze_bearer:
+    oculyze_basic:
       type: http
-      scheme: bearer
-      bearerFormat: JWT    # optional, arbitrary value for documentation purposes
+      scheme: basic
   schemas:
     Token:
       type: object
@@ -290,7 +282,3 @@ components:
           type: integer
           example: 1
     
-          
-security:
-  - oculyze_oauth: []
-  - oculyze_bearer: []
